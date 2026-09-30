@@ -85,3 +85,8 @@ class DashboardSummary(BaseModel):
     total_sales: Decimal
     low_stock_count: int
 
+class OrderImportResult(BaseModel):
+    total_rows: int
+    orders_created: int
+    products_created: int
+    customers_created: int

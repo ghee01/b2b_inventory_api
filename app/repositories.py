@@ -1,3 +1,5 @@
+from collections.abc import Iterable, Iterator
+
 from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
@@ -108,3 +110,23 @@ class DashboardRepository:
             "low_stock_count": low_stock_count,
         }
 
+def _chunks(values: list[str], size: int=500) -> Iterator[list[str]]:
+    for i in range(0, len(values), size):
+        yield values[i : i + size]
+
+class ImportRepository:
+    def get_customers_by_business_numbers(self, db: Session, business_numbers: Iterable[str]) -> dict[str, models.Customer]:
+        found: dict[str, models.Customer] = {}
+        for chunk in _chunks(list(business_numbers)):
+            stmt = select(models.Customer).where(models.Customer.business_number.in_(chunk))
+            for customer in db.scalars(stmt):
+                found[customer.business_number] = customer
+        return found
+
+    def get_products_by_skus(self, db: Session, skus: Iterable[str]) -> dict[str, models.Product]:
+        found: dict[str, models.Product] = {}
+        for chunk in _chunks(list(skus)):
+            stmt = select(models.Product).where(models.Product.sku.in_(chunk))
+            for product in db.scalars(stmt):
+                found[product.sku] = product
+        return found
