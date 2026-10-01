@@ -18,4 +18,4 @@ def import_orders(
     content = file.file.read(MAX_UPLOAD_BYTES + 1)
     if len(content) > MAX_UPLOAD_BYTES:
         raise HTTPException(status.HTTP_413_CONTENT_TOO_LARGE, detail='파일은 10MB 이하여야 합니다.')
-    return
+    return import_service.import_orders(db, content, initial_stock)

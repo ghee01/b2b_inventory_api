@@ -4,7 +4,7 @@
 사용 예
 - python dummy_orders.py --days 365 --seed 42 --out data/dummy_orders.csv
 
-상품마다 '심어둔 패턴'(추세, 약한 계절성, 프로젝트성 수요 급증)이 있어서
+상품마다 '심어둔 패턴'(추세, 프로젝트성 수요 급증)이 있어서
 나중에 예측 모델이 이 패턴을 잘 찾는지 검증할 수 있다.
 같은 seed면 항상 같은 CSV가 나온다.
 '''
@@ -164,8 +164,8 @@ def main():
     df.to_csv(out, index=False, encoding='utf-8-sig')
 
     print(f'저장 완료: {out}')
-    print(f'  행 수: {len(df):,} / 주문 수: {df['order_id'].nunique():,}')
-    print(f'  기간: {df['ordered_at'].min()} ~ {df['ordered_at'].max()}')
+    print(f'  행 수: {len(df):,} / 주문 수: {df["order_id"].nunique():,}')
+    print(f'  기간: {df["ordered_at"].min()} ~ {df["ordered_at"].max()}')
 
 if __name__ == '__main__':
     main()
