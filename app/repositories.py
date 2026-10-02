@@ -149,3 +149,13 @@ class ImportRepository:
         except Exception:
             db.rollback()
             raise
+
+class ForecastRepository:
+    def order_lines(self, db: Session) -> list[tuple]:
+        """확정 주문의 (상품 id, 주문 시각, 수량) 행을 전부 가져온다."""
+        stmt = (
+            select(models.OrderItem.product_id, models.Order.ordered_at, models.OrderItem.quantity)
+            .join(models.Order, models.Order.id == models.OrderItem.order_id)
+            .where(models.Order.status == 'confirmed')
+        )
+        return [tuple(row) for row in db.execute(stmt).all()]

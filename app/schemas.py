@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -90,3 +90,7 @@ class OrderImportResult(BaseModel):
     orders_created: int
     products_created: int
     customers_created: int
+
+class WeeklyPoint(BaseModel):
+    week_start: date
+    quantity: float
