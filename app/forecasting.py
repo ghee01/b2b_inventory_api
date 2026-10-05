@@ -58,7 +58,7 @@ def active_week_ratio(weekly: pd.DataFrame, window: int = ACTIVE_WINDOW_WEEKS) -
 
 def month_start_days(week_start: pd.Timestamp) -> int:
     """그 주(월~일)에 '매월 1~7일'이 며칠 들어 있는지 (0~7). 월초 정기 발주 효과용"""
-    return sum((week_start + pd.Timedelta(days=i)) <= 7 for i in range(7))
+    return sum((week_start + pd.Timedelta(days=i)).day <= 7 for i in range(7))
 
 def build_table(weekly: pd.DataFrame) -> pd.DataFrame:
     """
@@ -86,7 +86,7 @@ def build_table(weekly: pd.DataFrame) -> pd.DataFrame:
 
         tables.append(table.iloc[LAGS:])    # 앞쪽 4주는 lag가 없어서 버림
 
-        return pd.concat(tables, ignore_index=True)
+    return pd.concat(tables, ignore_index=True)
 
 def wape(actual, pred) -> float:
     """
