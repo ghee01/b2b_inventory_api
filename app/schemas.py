@@ -94,3 +94,26 @@ class OrderImportResult(BaseModel):
 class WeeklyPoint(BaseModel):
     week_start: date
     quantity: float
+
+class ProductForecast(BaseModel):
+    product_id: int
+    sku: str
+    name: str
+    model: str
+    backtest_wape: float | None
+    active_week_ratio: float
+    history: list[WeeklyPoint]
+    forecast: list[WeeklyPoint]
+
+class ExcludedProduct(BaseModel):
+    product_id: int
+    sku: str
+    name: str
+    active_week_ratio: float
+    reason: str
+
+class ForecastOverview(BaseModel):
+    weeks: int
+    min_active_week_ratio: float
+    forecasts: list[ProductForecast]
+    excluded: list[ExcludedProduct]

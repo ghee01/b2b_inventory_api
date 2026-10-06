@@ -9,6 +9,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import RandomForestRegressor
 
 LAGS = 4    # 최근 몇 주를 보고 다음 주를 예측할지
 FEATURE_COLS = ["lag_1", "lag_2", "lag_3", "lag_4", "avg_4", "month_start_days"]
@@ -96,3 +97,86 @@ def wape(actual, pred) -> float:
     actual = np.asarray(actual, dtype=float)
     total = actual.sum()
     return float(np.abs(actual - np.asarray(pred, dtype=float)).sum() / total) if total > 0 else float('nan')
+
+MIN_ACTIVE_WEEK_RATIO = 0.8
+HOLDOUT_WEEKS = 8   
+MIN_HISTORY_WEEKS = 26      # 이보다 주간 데이터가 짧으면 예측하지 않음
+RF_PARAMS = dict(n_estimators=200, min_samples_leaf=2, random_state=42, n_jobs=1)
+
+def split_eligible(weekly: pd.DataFrame, min_ratio: float=MIN_ACTIVE_WEEK_RATIO):
+    """(예측 대상 상품 id 목록, 상품별 비율)"""
+    ratio = active_week_ratio(weekly)
+    return list(ratio[ratio >= min_ratio].index), ratio
+
+def feature_row(product_id, history: list[float], week_start: pd.Timestamp) -> dict:
+    """
+    예측할 때 쓰는 입력값 한 줄
+    build_table의 컬럼들과 의미가 같아야 한다.
+
+    - history: 그 주 직전까지의 주간 수량 리스트
+    """
+    row = {'product_id': product_id, 'week_start': week_start}
+    
+    for k in range(1, LAGS + 1):
+        row[f'lag_{k}'] = history[-k]
+    row['avg_4'] = float(np.mean(history[-LAGS:]))
+    row['month_start_days'] = month_start_days(week_start)
+    return row
+
+class DemandForecaster:
+    """상품마다 랜덤포레스트를 따로 학습한다."""
+
+    name = 'random_forest_per_product'
+
+    def fit(self, weekly: pd.DataFrame) -> "DemandForecaster":
+        table = build_table(weekly)
+        self.models_ = {
+            # {상품 id: 그 상품 전용 모델}
+            product_id: RandomForestRegressor(**RF_PARAMS).fit(product_rows[FEATURE_COLS], product_rows['target'])
+            for product_id, product_rows in table.groupby('product_id')
+        }
+        return self
+
+    def predict_rows(self, rows: pd.DataFrame) -> np.ndarray:
+        """rows의 예측값. 줄마다 그 상품의 모델로 예측한다."""
+        rows = rows.reset_index(drop=True)
+        pred = np.zeros(len(rows))  # 초기화
+        for product_id in rows['product_id'].unique():
+            is_this_product = (rows['product_id'] == product_id).to_numpy()
+            pred[is_this_product] = self.models_[product_id].predict(rows.loc[is_this_product, FEATURE_COLS])
+        return np.clip(pred, 0, None)   # 음수를 0으로 제한
+
+    def forecast(self, weekly: pd.DataFrame, horizon: int) -> pd.DataFrame:
+        """
+        다음 horizon주를 예측한다. (index=예측 주 월요일, columns=상품 id)
+            - 한 주씩 예측하고, 그 예측값을 다음 주의 lag로 넣어서 이어간다.
+            - 먼 주일수록 정확도는 떨어진다.
+        """
+        histories = {product_id: weekly[product_id].tolist() for product_id in weekly.columns}
+        out = {}
+        for step in range(1, horizon + 1):
+            week = weekly.index[-1] + pd.Timedelta(weeks=step)
+            rows = pd.DataFrame(
+                [feature_row(product_id, history, week) for product_id, history in histories.items()]
+            )
+            preds = self.predict_rows(rows)
+
+            for product_id, pred in zip(histories, preds):
+                histories[product_id].append(float(pred))
+
+            out[week] = dict(zip(histories, preds))
+
+        return pd.DataFrame(out).T
+
+def backtest_wape(weekly: pd.DataFrame, holdout_weeks: int=HOLDOUT_WEEKS) -> pd.Series:
+    """
+    상품별 '다음 1주' 예측 오차(WAPE).
+    마지막 holdout_weeks주를 학습에서 빼고 맞혀본다.
+    """
+    forecaster = DemandForecaster().fit(weekly.iloc[:-holdout_weeks])
+    table = build_table(weekly)
+    test = table[table['week_start'] >= weekly.index[-holdout_weeks]].copy()
+    test['pred'] = forecaster.predict_rows(test)
+    return pd.Series({
+        pid: wape(g['target'], g['pred']) for pid, g in test.groupby('product_id')
+    })
