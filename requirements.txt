@@ -11,3 +11,5 @@ pytest
 python-dotenv
 python-multipart
 requests
+psycopg[binary]
+requests
