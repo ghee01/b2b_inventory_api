@@ -33,3 +33,7 @@ app.include_router(replenishment.router)
 def health_check():
     return {"status": "ok"}
 
+
+# Jinja2 관리 화면
+from app.web import install_web
+install_web(app)
