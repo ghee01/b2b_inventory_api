@@ -20,6 +20,7 @@ dependencies = [
     "sqlalchemy>=2.0.54",
     "streamlit>=1.64.0",
     "uvicorn[standard]>=0.54.0",
+    "httpx2>=2.13.1",
 ]
 
 [tool.pytest.ini_options]
