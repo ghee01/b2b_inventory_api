@@ -122,7 +122,6 @@ flowchart TD
 │       ├── style.css
 │       ├── app.js
 │       └── orders-template.csv
-├── tests/test_web_integration.py
 ├── pyproject.toml
 ├── requirements.txt
 ├── Dockerfile
